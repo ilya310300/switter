@@ -56,57 +56,6 @@ class model {
         return $this->catch_db_error($query);
     }
 
-    public function getUserInfo($UserID){
-        $res = $this->select_one('SELECT * FROM `UserPrivate` WHERE `id` = "'.$UserID.'"');
 
-        if(count($res) == 0)
-            return false;
-        else
-            return $res;
-    }
-
-    public function doReg($registerVars){
-
-        if(count($this->select_one('SELECT `id` FROM `UserPrivate` WHERE `Login` = "'.addslashes(trim($registerVars['login'])).'" OR `email` = "'.addslashes(trim($registerVars['email'])).'"')) != 0)
-            return false; // Проверка есть ли уже пользователь с таким логином или мылом
-
-        $names = null;
-        $values = null;
-
-        foreach($registerVars as $key => $value){
-            $names .= '`'.addslashes($key).'`,';
-            $values .= '"'.addslashes(htmlspecialchars(trim($value))).'",';
-        }
-
-        $names = substr($names, 0, strlen($names)-1); // Обрезаем запятые на концах
-        $values = substr($values, 0, strlen($values)-1); // Обрезаем запятые на концах
-
-        $id = $this->insert('INSERT INTO `UserPrivate` '.$names.' VALUES ('.$values.')');
-
-        return $id;
-    }
-
-    public function doLogin($login, $pass){
-        $pass = md5($pass.SALT);
-        $row = $this->select_one('SELECT * FROM `UserPrivate` WHERE `Login` = "'.addslashes($login).'" AND `passhash` = "'.$pass.'"');
-        if(count($row) == 0)
-            return false;
-        else
-            return $row;
-    }
-
-    public function getFeed($UserID){
-        if(!$this->getUserInfo($UserID)){
-            return array('ErrorUserNotFound');
-        }
-
-        $res = $this->select('SELECT * FROM `swites` WHERE `OwnerID` = "'.$UserID.'"');
-
-        if(count($res)){
-            $res[0] = 'ErrorFeedNotFound';
-        }
-
-
-    }
 
 }

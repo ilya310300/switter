@@ -12,7 +12,7 @@ class view{
 
     }
 
-    public function json_err($err) {
+    public static function json_err($err) {
         $json = array("Error" => $err);
         return json_encode($json);
     }

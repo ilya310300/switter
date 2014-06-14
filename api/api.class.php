@@ -23,7 +23,7 @@ class api {
         if ((count($_REQUEST)>0)&&($action[1]=="api")) {
             $action = end($action);
             if(!empty($action)) {
-                if(empty($_POST)) { print $this->view->json_err("No params post."); }
+                if(empty($_POST)) { print view::json_err("No params post."); }
                 else {
                     if(method_exists($this, $action)){
                         $func = new ReflectionMethod($this, $action);
@@ -36,8 +36,8 @@ class api {
                             call_user_func_array(array($this, $action), $args);
                         try {
                         } catch (ErrorException $e) {
-                            print $this->view->json_err($_POST);}
-                    } else {print $this->view->json_err("The method ".$action." is undefined."); }
+                            print view::json_err($_POST);}
+                    } else {print view::json_err("The method ".$action." is undefined."); }
                 }
             }
         }
@@ -59,62 +59,42 @@ class api {
             return false;
     }
 
-    public function getUserInfo($UserID=null){
-        $UserID = $UserID == null?$_SESSION['id']:$UserID;
-        $res = $this->model->getUserInfo($UserID);
+    public function getUserInfo($UserID=null, $token=null){
+        $res = $this->model->getUserInfo($UserID, $token);
         if($res == false)
-            $this->view->json_err('ErrorUserNotFound');
+            view::json_err('ErrorUserNotFound');
         else
-            $this->view->doJsonPack($res);
+            view::doJsonPack($res);
     }
 
-    public function doReg($registerVars){ // Input array('Login' => 'ivanpetrovich', ..) как в базе $key укзывать
-        $res = $this->model->doReg($registerVars); // Возвращает  id зарегистрированного юзера∂
-        if($res == false)
-            $this->view->json_err('User register before');
-        else
-            $this->view->doJsonPack($res);
+    private function _getToken($email,$password,$action,$social = NULL) { //return (INT)||(Array)||(String)
+        switch($action) {
+            case "signin":
+                if($login = $this->model->tryLogin($email,crypt($password,SALT)))
+                    return $login;  //row from `UserPrivate`
+                else
+                    return ERROR_1;
+                break;
+            case "signup":
+                if($email!=""&&$password!="") {
+                    if(!$this->model->emailExists($email)) {
+                        $token = "u_".md5(uniqid('', true));
+                        return array($token,$this->model->doSignUp($email,crypt($password,SALT),$token)); //userID (INT)
+                    }
+                } else return ERROR_23;
+                return ERROR_2;
+                break;
+        }
+        print view::json_err(serialize($_REQUEST).' '.ERROR_3);
+        exit;
     }
 
-    public function doLogin($login, $pass){
-        $login = trim($login);
-        $pass = trim($pass);
-        $res = $this->model->doLogin($login, $pass);
-
-        if($res == false){
-            $this->view->json_err('ErrorUserNotFound');
-        }
-        else{
-            $_SESSION['id'] = $res['id'];
-            $_SESSION['login'] = $res['login'];
-            $_SESSION['token'] = md5($res['passhash'].SALT_FOR_TOKEN);
-            $this->view->doJsonPack($res);
-        }
+    public function signUp($email,$password) {
+        view::signUp($this->_getToken($email,$password,"signup"));
     }
 
-    private function validToken($token){
-        //Придумай тут что нибудь
-        return true;
-    }
-
-    public function getFeed($token, $UserID){
-        if(!$this->validToken($token)){
-            $this->view->json_err('InvalidToken');
-            return false;
-        }
-
-        $res = $this->model->getFeed($UserID);
-
-        if($res[0] == 'ErrorUserNotFound'){
-            $this->view->json_err('ErrorUserNotFound');
-        }
-        elseif($res[0] == 'ErrorFeedNotFound'){
-            $this->view->json_err('ErrorFeedNotFound');
-        }
-        else{
-            $this->view->doJsonPack($res);
-        }
-
+    public function signIn($email,$password) {
+        view::signIn($this->_getToken($email,$password,"signin"));
     }
 
 }
